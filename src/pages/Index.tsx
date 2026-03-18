@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Rocket } from "lucide-react";
 
 
-const DESTINATION_URL = "https://centurion-es.org/auth/login";
+const DESTINATION_URL = "https://www.dplga.gov.pg/";
 const DEFAULT_BACKDROP = "/assets/images/DPLGA_Backdrop_Banner_Page.png";
 
 interface Particle {
