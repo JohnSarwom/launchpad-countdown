@@ -24,9 +24,9 @@ const PHOENIX_COLORS = [
 
 const Index = () => {
   const [backgroundImage] = useState<string | null>(DEFAULT_BACKDROP);
-  const autostart = useMemo(() => {
+  const fullscreen = useMemo(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.get("autostart") === "true";
+    return params.get("fullscreen") === "true";
   }, []);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
@@ -147,13 +147,12 @@ const Index = () => {
     }, 3000);
   }, []);
 
-  // Auto-start: go fullscreen and begin countdown immediately
+  // Fullscreen mode: go fullscreen on load but keep the Launch button
   useEffect(() => {
-    if (autostart && !isCountingDown && !showLaunch) {
+    if (fullscreen) {
       document.documentElement.requestFullscreen?.().catch(() => {});
-      startCountdown();
     }
-  }, [autostart]);
+  }, [fullscreen]);
 
   useEffect(() => {
     if (!isCountingDown) return;
