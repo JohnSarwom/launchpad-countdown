@@ -24,6 +24,10 @@ const PHOENIX_COLORS = [
 
 const Index = () => {
   const [backgroundImage] = useState<string | null>(DEFAULT_BACKDROP);
+  const autostart = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("autostart") === "true";
+  }, []);
   const [isCountingDown, setIsCountingDown] = useState(false);
   const [countdown, setCountdown] = useState(5);
   const [showLaunch, setShowLaunch] = useState(false);
@@ -142,6 +146,14 @@ const Index = () => {
       setParticles((prev) => prev.filter((p) => !ids.has(p.id)));
     }, 3000);
   }, []);
+
+  // Auto-start: go fullscreen and begin countdown immediately
+  useEffect(() => {
+    if (autostart && !isCountingDown && !showLaunch) {
+      document.documentElement.requestFullscreen?.().catch(() => {});
+      startCountdown();
+    }
+  }, [autostart]);
 
   useEffect(() => {
     if (!isCountingDown) return;
