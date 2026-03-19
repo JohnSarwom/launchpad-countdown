@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Rocket } from "lucide-react";
+import confetti from "canvas-confetti";
 
 
-const DESTINATION_URL = "https://www.dplga.gov.pg/";
+const DESTINATION_URL = "https://is.gd/p4UHjm";
 const DEFAULT_BACKDROP = "/assets/images/DPLGA_Backdrop_Banner_Page.png";
 
 interface Particle {
@@ -30,7 +31,97 @@ const Index = () => {
   const [screenShake, setScreenShake] = useState(false);
   const [flashOpacity, setFlashOpacity] = useState(0);
   const particleIdRef = useRef(0);
+  const celebrationRef = useRef<NodeJS.Timeout | null>(null);
 
+  const dustParticles = useMemo(() =>
+    Array.from({ length: 35 }, (_, i) => {
+      const size = Math.random() * 3 + 1;
+      return {
+        key: `dust-${i}`,
+        style: {
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+          width: `${size}px`,
+          height: `${size}px`,
+          animationDuration: `${Math.random() * 6 + 4}s`,
+          animationDelay: `${Math.random() * 5}s`,
+          opacity: Math.random() * 0.5 + 0.2,
+        },
+      };
+    }), []);
+
+
+  const startCelebration = useCallback(() => {
+    // Initial big burst from center
+    confetti({
+      particleCount: 150,
+      spread: 120,
+      origin: { y: 0.5 },
+      colors: ["#ffd977", "#ff8c42", "#e63946", "#fff176", "#ffb347", "#ffffff"],
+      startVelocity: 45,
+      gravity: 0.6,
+      ticks: 300,
+    });
+
+    // Repeating fireworks from random positions
+    let elapsed = 0;
+    const interval = setInterval(() => {
+      elapsed += 400;
+      if (elapsed > 5500) {
+        clearInterval(interval);
+        return;
+      }
+
+      // Firework burst — bigger, faster, more visible
+      const x = 0.1 + Math.random() * 0.8;
+      const y = 0.1 + Math.random() * 0.5;
+      confetti({
+        particleCount: 60 + Math.floor(Math.random() * 50),
+        spread: 80 + Math.random() * 60,
+        origin: { x, y },
+        colors: ["#ffd977", "#ff8c42", "#e63946", "#fff176", "#cfa44a", "#ff6b35", "#ffffff"],
+        startVelocity: 35 + Math.random() * 25,
+        gravity: 0.5,
+        ticks: 350,
+        scalar: 1.2,
+      });
+
+      // Second simultaneous burst from opposite side for fullness
+      confetti({
+        particleCount: 30 + Math.floor(Math.random() * 20),
+        spread: 70,
+        origin: { x: 1 - x, y: 0.1 + Math.random() * 0.4 },
+        colors: ["#ffb347", "#fff176", "#ffffff", "#ffd977"],
+        startVelocity: 30 + Math.random() * 20,
+        gravity: 0.6,
+        ticks: 300,
+        scalar: 1.1,
+      });
+
+      // Confetti shower from top
+      if (Math.random() > 0.3) {
+        confetti({
+          particleCount: 30,
+          angle: 270,
+          spread: 100,
+          origin: { x: Math.random(), y: -0.1 },
+          colors: ["#ffd977", "#ffffff", "#ffb347", "#fff176"],
+          gravity: 1.2,
+          ticks: 400,
+          scalar: 1.0,
+        });
+      }
+    }, 400);
+
+    celebrationRef.current = interval;
+  }, []);
+
+  const stopCelebration = useCallback(() => {
+    if (celebrationRef.current) {
+      clearInterval(celebrationRef.current);
+      celebrationRef.current = null;
+    }
+  }, []);
 
   const spawnParticles = useCallback((count: number, intensity: number = 1) => {
     const newParticles: Particle[] = [];
@@ -46,8 +137,9 @@ const Index = () => {
       });
     }
     setParticles((prev) => [...prev, ...newParticles]);
+    const ids = new Set(newParticles.map((p) => p.id));
     setTimeout(() => {
-      setParticles((prev) => prev.filter((p) => !newParticles.includes(p)));
+      setParticles((prev) => prev.filter((p) => !ids.has(p.id)));
     }, 3000);
   }, []);
 
@@ -73,10 +165,12 @@ const Index = () => {
       setTimeout(() => setFlashOpacity(0), 500);
 
       setShowLaunch(true);
+      startCelebration();
       setTimeout(() => {
+        stopCelebration();
         window.open(DESTINATION_URL, "_blank");
         resetCountdown();
-      }, 1500);
+      }, 6000);
     }
   }, [isCountingDown, countdown, spawnParticles]);
 
@@ -88,6 +182,7 @@ const Index = () => {
   };
 
   const resetCountdown = () => {
+    stopCelebration();
     setIsCountingDown(false);
     setCountdown(5);
     setShowLaunch(false);
@@ -96,8 +191,22 @@ const Index = () => {
 
   const shakeClass = screenShake ? "countdown-shake" : "";
 
+  // Progressive zoom: each count zooms in more, stays zoomed
+  const zoomLevel = isCountingDown
+    ? showLaunch
+      ? 1.4
+      : 1 + (5 - countdown) * 0.08
+    : 1;
+
   return (
-    <div className={`relative min-h-screen w-full overflow-hidden bg-black ${shakeClass}`}>
+    <div
+      className="min-h-screen w-full overflow-hidden bg-black"
+      style={{
+        transform: `scale(${zoomLevel})`,
+        transition: "transform 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+      }}
+    >
+    <div className={`relative min-h-screen w-full ${shakeClass}`}>
       {/* Background Image */}
       {backgroundImage && (
         <div
@@ -111,30 +220,22 @@ const Index = () => {
 
       {/* Dark Overlay - intensifies with countdown */}
       <div
-        className="absolute inset-0 transition-all duration-700"
+        className="absolute inset-0"
         style={{
-          background: isCountingDown
-            ? `radial-gradient(circle at center, rgba(0,0,0,${0.4 + (5 - countdown) * 0.08}) 0%, rgba(0,0,0,${0.7 + (5 - countdown) * 0.05}) 100%)`
-            : "rgba(0,0,0,0.5)",
+          background: "radial-gradient(circle at center, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%)",
+          opacity: isCountingDown ? 0.5 + (5 - countdown) * 0.1 : 0.55,
+          transition: "opacity 0.7s ease",
         }}
       />
 
       {/* Ambient Golden Dust (idle screen) */}
       {!isCountingDown && (
         <div className="absolute inset-0 pointer-events-none z-[6]">
-          {Array.from({ length: 35 }).map((_, i) => (
+          {dustParticles.map((d) => (
             <div
-              key={`dust-${i}`}
+              key={d.key}
               className="golden-dust"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                width: `${Math.random() * 3 + 1}px`,
-                height: `${Math.random() * 3 + 1}px`,
-                animationDuration: `${Math.random() * 6 + 4}s`,
-                animationDelay: `${Math.random() * 5}s`,
-                opacity: Math.random() * 0.5 + 0.2,
-              }}
+              style={d.style}
             />
           ))}
         </div>
@@ -173,7 +274,7 @@ const Index = () => {
             width: `${p.size}px`,
             height: `${p.size}px`,
             backgroundColor: p.color,
-            boxShadow: `0 0 ${p.size * 3}px ${p.color}, 0 0 ${p.size * 6}px ${p.color}`,
+            boxShadow: `0 0 ${p.size * 4}px ${p.color}`,
             animationDuration: `${p.duration}s`,
             animationDelay: `${p.delay}s`,
           }}
@@ -235,6 +336,7 @@ const Index = () => {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };
